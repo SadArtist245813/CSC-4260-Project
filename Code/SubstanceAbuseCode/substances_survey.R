@@ -4,19 +4,17 @@
 library(dplyr)
 df <- read.csv(file.choose())
 
+type_cols <- c("nicotine_type_cig",
+               "nicotine_type_vape",
+               "nicotine_type_chew",
+               "nicotine_type_zyn",
+               "nicotine_type_cess")
+
 # Derive a composite variable for any nicotine use
 # This variable indicates if a participant uses any nicotine product.
-df$any_nicotine_use <- ifelse(
-  df$nicotine_type_cig == 1 |
-    df$nicotine_type_vape == 1 |
-    df$nicotine_type_chew == 1 |
-    df$nicotine_type_zyn == 1 |
-    df$nicotine_type_cess == 1,
-  1, # Yes, uses nicotine
-  0  # No, does not use nicotine
-)
-# If 'nicotine_type_none' is selected, then 'any_nicotine_use' should be 0, overriding other selections.
-df$any_nicotine_use <- ifelse(df$nicotine_type_none == 1, 0, df$any_nicotine_use)
+df$any_nicotine_use <- ifelse(df$nicotine_type_none == 1, 0,
+                              ifelse(apply(df[type_cols], 1, function(x) all(is.na(x))), NA,
+                                     ifelse(rowSums(df[type_cols], na.rm = TRUE) > 0, 1, 0)))
 
 # Recode frequency variables to a numerical scale for easier scoring
 # Higher numbers will indicate higher frequency/risk.
@@ -50,24 +48,24 @@ df$nicotine_overall_freq_score <- ifelse(df$nicotine_type_none == 1, 0,
                                          ifelse(is.infinite(df$nicotine_overall_freq_score), NA, df$nicotine_overall_freq_score))
 
 # Calculate a total nicotine use score (similar to AUDIT_score)
-df$nicotine_score <- rowSums(cbind(
-  as.numeric(df$nicotine_type_cig == 1),
-  as.numeric(df$nicotine_type_vape == 1),
-  as.numeric(df$nicotine_type_chew == 1),
-  as.numeric(df$nicotine_type_zyn == 1),
-  as.numeric(df$nicotine_type_cess == 1)
-), na.rm = TRUE) +
+
+# Convert while preserving NA
+df[type_cols] <- lapply(df[type_cols], function(x) {
+  # Keep NA as NA, convert 1 to 1, everything else to 0
+  ifelse(is.na(x), NA, ifelse(x == 1, 1, 0))
+})
+
+df$nicotine_score <- rowSums(df[type_cols], na.rm = TRUE) + 
   ifelse(is.na(df$nicotine_overall_freq_score), 0, df$nicotine_overall_freq_score)
 
-# If any_nicotine_use is 0, then nicotine_score should also be 0.
-df$nicotine_score <- ifelse(df$any_nicotine_use == 0, 0, df$nicotine_score)
+all_na <- apply(df[type_cols], 1, function(x) all(is.na(x)))
+df$nicotine_score[all_na] <- NA
 
 # Define a nicotine risk variable (similar to AUDIT_risk)
 # With current scoring: min = 0 (no use), max = 5 (all types used) + 7 (max freq) = 12.
 
-df$nicotine_risk <- ifelse(df$nicotine_score > 5 & df$nicotine_score <= 12, 1, 0)
-df$nicotine_risk <- ifelse(is.na(df$nicotine_score), NA, df$nicotine_risk)
-df$nicotine_risk <- ifelse(df$nicotine_type_none == 1, 0, df$nicotine_risk)
+df$nicotine_risk <- ifelse(is.na(df$nicotine_score), NA,
+                           ifelse(df$nicotine_score > 5 & df$nicotine_score <= 12, 1, 0))
 
 # Reverse sub_knowwher_rev (6 is most aware of where to find help)
 df$sub_knowwhere_rev <- 7 - df$sub_knowwher
@@ -110,5 +108,9 @@ df <- df %>%
 cols_to_keep <- c("nicotine_risk", "nicotine_score", "audit_risk", "audit_score", "drug_mar", "aca_substance_impact_count", "sub_effort_binary", "sub_knowwhere_rev", "grade_composite")
 
 filtered_df <- df[, cols_to_keep]
+
+table(df$any_nicotine_use)
+table(df$nicotine_score)
+summary(df$nicotine_score)
 
 write.csv(filtered_df, file = file.choose())

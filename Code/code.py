@@ -8,7 +8,7 @@ warnings.filterwarnings('ignore', category=DeprecationWarning)
 # Load Data
 print("Loading HMS 2024-2025 dataset...")
 try:
-    df = pd.read_csv(r"temp_data.csv")
+    df = pd.read_csv(r"HMS_2024-2025_PUBLIC_instchars.csv")
 except FileNotFoundError:
     print("Error: HMS_2024-2025_PUBLIC_instchars.csv not found.")
     sys.exit(1)
@@ -85,17 +85,6 @@ def plot_top_fields():
     sns.barplot(x=field_sums.values, y=field_sums.index, palette='mako')
     plt.title('5. Top 10 Fields of Study')
     plt.savefig('plot_05_fields.png', bbox_inches='tight'); plt.close()
-
-def plot_grades():
-    grade_cols = [col for col in ['gr_A','gr_B','gr_C','gr_D','gr_F'] if col in df.columns]
-    if not grade_cols:
-        print("Grade columns not found in dataset")
-        return
-    grade_means = df[grade_cols].mean()
-    sns.barplot(x=grade_means.index, y=grade_means.values, palette='Oranges')
-    plt.title('6. Average Self-Reported Grade Distribution')
-    plt.ylabel('Mean Proportion')
-    plt.savefig('plot_06_grades.png', bbox_inches='tight'); plt.close()
 
 def plot_aca_impa():
     if 'aca_impa' not in df.columns:
@@ -178,7 +167,100 @@ def plot_therapy():
     plt.title('17. Lifetime Therapy or Medication Use')
     plt.savefig('plot_17_therapy.png', bbox_inches='tight'); plt.close()
 
+def plot_abuse_and_grades():
+    # Combined visualization: responses to `abuse_life` and grades `gr_A`-`gr_F`
+    grade_cols = [c for c in ['gr_A', 'gr_B', 'gr_C', 'gr_D', 'gr_F'] if c in df.columns]
 
+    if 'abuse_life' not in df.columns:
+        print("abuse_life column not found in dataset")
+        return
+    if not grade_cols:
+        print("Grade columns not found in dataset")
+        return
+
+    grade_map = {
+        'gr_A': 'A',
+        'gr_B': 'B',
+        'gr_C': 'C',
+        'gr_D': 'D',
+        'gr_F': 'F'
+    }
+    grades = df[grade_cols].fillna(0).astype(float)
+
+    # Determine the grade selected per person, if any.
+    def pick_grade(row):
+        positives = [grade_map[col] for col in grade_cols if row[col] == 1]
+        if len(positives) == 1:
+            return positives[0]
+        if len(positives) > 1:
+            return '+'.join(positives)
+        return 'Unknown'
+
+    person_grade = grades.apply(pick_grade, axis=1)
+    data = df[['abuse_life']].copy()
+    data['grade_selected'] = person_grade
+    data = data[data['grade_selected'] != 'Unknown']
+ 
+    sns.countplot(
+        x='grade_selected',
+        hue=data['abuse_life'].astype(str),
+        data=data,
+        palette='Oranges'
+    )
+    plt.title('Grade choice by abuse_life response')
+    plt.xlabel('Grade selected')
+    plt.ylabel('Count of respondents')
+    plt.legend(title='abuse_life')
+    plt.savefig('plot_18_abuse_grades.png', bbox_inches='tight')
+    plt.close()
+    
+    
+def plot_dx_any_and_grades():
+    # Combined visualization: responses to `dx_any` and grades `gr_A`-`gr_F`
+    grade_cols = [c for c in ['gr_A', 'gr_B', 'gr_C', 'gr_D', 'gr_F'] if c in df.columns]
+
+    if 'dx_any' not in df.columns:
+        print("dx_any column not found in dataset")
+        return
+    if not grade_cols:
+        print("Grade columns not found in dataset")
+        return
+
+    grade_map = {
+        'gr_A': 'A',
+        'gr_B': 'B',
+        'gr_C': 'C',
+        'gr_D': 'D',
+        'gr_F': 'F'
+    }
+    grades = df[grade_cols].fillna(0).astype(float)
+
+    # Determine the grade selected per person, if any.
+    def pick_grade(row):
+        positives = [grade_map[col] for col in grade_cols if row[col] == 1]
+        if len(positives) == 1:
+            return positives[0]
+        if len(positives) > 1:
+            return '+'.join(positives)
+        return 'Unknown'
+
+    person_grade = grades.apply(pick_grade, axis=1)
+    data = df[['dx_any']].copy()
+    data['grade_selected'] = person_grade
+    data = data[data['grade_selected'] != 'Unknown']
+ 
+    sns.countplot(
+        x='grade_selected',
+        hue=data['dx_any'].astype(str),
+        data=data,
+        palette='Oranges'
+    )
+    plt.title('Grade choice by dx_any response')
+    plt.xlabel('Grade selected')
+    plt.ylabel('Count of respondents')
+    plt.legend(title='dx_any')
+    plt.savefig('plot_18_dx_any_grades.png', bbox_inches='tight')
+    plt.close()
 
 # Interactive Menu
 print("🎯 HMS Interactive Plot Generator")
@@ -200,12 +282,12 @@ while True:
         break
     
     if section_input == 'all':
-        print("Generating ALL 17 plots...")
+        print("Generating ALL 18 plots...")
         plot_age(); plot_gender(); plot_race_white(); plot_year_school(); plot_top_fields()
-        plot_grades(); plot_aca_impa()
+        plot_aca_impa()
         plot_flourish(); plot_phq9(); plot_gad7(); plot_self_harm()
-        plot_alc_any(); plot_binge(); plot_sleep(); plot_exercise(); plot_worry(); plot_therapy()
-        print("All 17 plots saved!")
+        plot_alc_any(); plot_binge(); plot_sleep(); plot_exercise(); plot_worry(); plot_therapy(); plot_abuse_and_grades(); plot_dx_any_and_grades()
+        print("All 18 plots saved!")
         continue
     
     # Map user input to section
@@ -231,14 +313,15 @@ while True:
         print("   5. Top 10 Fields of Study")
     elif section == 'academic':
         print("\nAcademic Performance plots available:")
-        print("   6. Grade Distribution (A–F)")
-        print("   7. Academic Impairment Score")
+        print("   6. Academic Impairment Score")
     elif section == 'mental':
         print("\nMental Health plots available:")
-        print("   8. Flourishing Score")
-        print("   9. PHQ-9 Depression")
-        print("  10. GAD-7 Anxiety")
-        print("  11. Any Self-Harm")
+        print("   7. Flourishing Score")
+        print("   8. PHQ-9 Depression")
+        print("   9. GAD-7 Anxiety")
+        print("  10. Any Self-Harm")
+        print("  11. Grade choice by abuse_life")
+        print("  12. Grade choice by dx_any")
     elif section == 'lifestyle':
         print("\nLifestyle & Health plots available:")
         print("  12. Any Alcohol Use")
@@ -255,9 +338,9 @@ while True:
         if section == 'demographics':
             plot_age(); plot_gender(); plot_race_white(); plot_year_school(); plot_top_fields()
         elif section == 'academic':
-            plot_grades(); plot_aca_impa()
+            plot_aca_impa()
         elif section == 'mental':
-            plot_flourish(); plot_phq9(); plot_gad7(); plot_self_harm()
+            plot_flourish(); plot_phq9(); plot_gad7(); plot_self_harm(); plot_abuse_and_grades(); plot_dx_any_and_grades()
         elif section == 'lifestyle':
             plot_alc_any(); plot_binge(); plot_sleep(); plot_exercise(); plot_worry(); plot_therapy()
         print(f"All plots for {section} saved!")
@@ -272,21 +355,22 @@ while True:
             elif n == 3: plot_race_white()
             elif n == 4: plot_year_school()
             elif n == 5: plot_top_fields()
-            elif n == 6: plot_grades()
-            elif n == 7: plot_aca_impa()
-            elif n == 8: plot_flourish()
-            elif n == 9: plot_phq9()
-            elif n == 10: plot_gad7()
-            elif n == 11: plot_self_harm()
-            elif n == 12: plot_alc_any()
-            elif n == 13: plot_binge()
-            elif n == 14: plot_sleep()
-            elif n == 15: plot_exercise()
-            elif n == 16: plot_worry()
-            elif n == 17: plot_therapy()
+            elif n == 6: plot_aca_impa()
+            elif n == 7: plot_flourish()
+            elif n == 8: plot_phq9()
+            elif n == 9: plot_gad7()
+            elif n == 10: plot_self_harm()
+            elif n == 11: plot_alc_any()
+            elif n == 12: plot_binge()
+            elif n == 13: plot_sleep()
+            elif n == 14: plot_exercise()
+            elif n == 15: plot_worry()
+            elif n == 16: plot_therapy()
+            elif n == 17: plot_abuse_and_grades()
+            elif n == 18: plot_dx_any_and_grades()
             else: print(f"Plot {n} not found")
         print(f"Selected plots for {section} have been saved as PNG files!")
     except Exception as e:
-        print(f"Invalid input. Use numbers separated by commas.\m{e}")
+        print(f"Invalid input. Use numbers separated by commas. {e}")
 
     

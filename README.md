@@ -45,5 +45,8 @@ Contains a brief summary of the data included in the dataset as well as a map co
 * Mia Guzman
 * Justin Hortopanu
 * Connor Sherrill
+ ---
+* Domain Expert: Dr Matthew Zagumny
+* Instructor: Dr William Eberle
 
 

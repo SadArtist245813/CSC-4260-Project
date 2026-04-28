@@ -42,7 +42,7 @@ if 'sleep_wknight' in df.columns and 'sleep_wkend' in df.columns:
 else:
     df['avg_sleep'] = 0
 
-print(f"✅ Dataset loaded: {df.shape[0]} rows, {df.shape[1]} columns\n")
+print(f"Dataset loaded: {df.shape[0]} rows, {df.shape[1]} columns\n")
 
 # Plot Functions
 sns.set_style("whitegrid")
@@ -268,7 +268,7 @@ def plot_dx_any_and_grades():
     plt.close()
 
 # Interactive Menu
-print("🎯 HMS Interactive Plot Generator")
+print("HMS Interactive Plot Generator")
 print("=" * 60)
 print("Available sections:")
 print("   1. Demographics")
@@ -305,7 +305,7 @@ while True:
     
     section = section_map.get(section_input)
     if not section:
-        print("❌ Invalid section. Please try again.")
+        print("Invalid section. Please try again.")
         continue
     
     # Show available plots for chosen section

@@ -1,3 +1,8 @@
+'''
+Author: Justin Hortopanu
+AI Usage: Formating plot selection and making plots look pretty. The brain power was done by the Author.
+'''
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
